@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: betterbox-api
+    name: betterbox-image-api
     env: node
     buildCommand: npm install
     startCommand: node api.js
