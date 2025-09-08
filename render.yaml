@@ -1,18 +1,13 @@
 services:
   - type: web
-    name: gemini-api-wrapper
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120
+    name: betterbox-api
+    env: node
+    buildCommand: npm install
+    startCommand: node api.js
     envVars:
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PORT
-        value: 5000
-    healthCheckPath: /api/health
-    scaling:
-      minInstances: 1
-      maxInstances: 3
-    plan: free
+      - key: NODE_ENV
+        value: production
+    routes:
+      - type: http
+        source: /
+        targetPort: 3000
