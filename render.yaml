@@ -4,6 +4,11 @@ services:
     env: node
     buildCommand: npm install
     startCommand: node api.js
+    plan: starter
+    disk:
+      name: betterbox-images
+      mountPath: /data
+      sizeGB: 5
     envVars:
       - key: NODE_ENV
         value: production

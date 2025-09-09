@@ -1,4 +1,4 @@
-// BetterBox: Permanent Image Hosting API
+// BetterBox: Permanent Image Hosting API (Render Persistent Disk)
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -6,10 +6,12 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
-const UPLOAD_DIR = path.join(__dirname, 'images');
 const PORT = process.env.PORT || 3000;
 
-// Allowed image mime types
+// Persistent disk path on Render
+const UPLOAD_DIR = path.join('/data', 'images');
+
+// Allowed image types
 const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/jpeg',
@@ -21,12 +23,12 @@ const ALLOWED_IMAGE_TYPES = [
   'image/avif'
 ];
 
-// Ensure 'images' directory exists
+// Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR);
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// Configure Multer for image uploads only
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
@@ -34,16 +36,14 @@ const storage = multer.diskStorage({
     cb(null, uuidv4() + ext);
   }
 });
+
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'));
-    }
+    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only image files are allowed!'));
   },
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
 const app = express();
@@ -52,16 +52,15 @@ app.use(cors());
 // Health check
 app.get('/', (req, res) => {
   res.json({
-    status: "OK",
-    message: "BetterBox Image API. Upload images via POST /upload"
+    status: 'OK',
+    message: 'BetterBox Permanent Image API. Upload images via POST /upload'
   });
 });
 
-// Upload endpoint: POST /upload (form-data key: image)
+// Upload endpoint
 app.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, error: 'No image uploaded.' });
-  }
+  if (!req.file) return res.status(400).json({ success: false, error: 'No image uploaded.' });
+  
   const imageUrl = `${req.protocol}://${req.get('host')}/i/${req.file.filename}`;
   res.json({
     success: true,
@@ -75,18 +74,15 @@ app.post('/upload', upload.single('image'), (req, res) => {
 // Serve uploaded images
 app.get('/i/:filename', (req, res) => {
   const filePath = path.join(UPLOAD_DIR, req.params.filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send('Image not found.');
-  }
+  if (!fs.existsSync(filePath)) return res.status(404).send('Image not found.');
   res.sendFile(filePath);
 });
 
-// Optional: Preview page for the image
+// Preview page
 app.get('/preview/:filename', (req, res) => {
   const filePath = path.join(UPLOAD_DIR, req.params.filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send('Image not found.');
-  }
+  if (!fs.existsSync(filePath)) return res.status(404).send('Image not found.');
+  
   const imageUrl = `${req.protocol}://${req.get('host')}/i/${req.params.filename}`;
   res.send(`
     <!DOCTYPE html>
@@ -105,7 +101,7 @@ app.get('/preview/:filename', (req, res) => {
       <h2>BetterBox Image Preview</h2>
       <img src="${imageUrl}" alt="Image" />
       <div class="url-box">
-        <input type="text" value="${imageUrl}" id="imgurl" readonly style="width:70%;font-size:1rem;border:none;background:transparent;"/>
+        <input type="text" value="${imageUrl}" readonly style="width:70%;font-size:1rem;border:none;background:transparent;"/>
         <button class="copy-btn" onclick="navigator.clipboard.writeText('${imageUrl}');this.textContent='Copied!'">Copy</button>
       </div>
     </body>
@@ -115,5 +111,5 @@ app.get('/preview/:filename', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`BetterBox Image API running on port ${PORT}`);
+  console.log(`✅ BetterBox API running on port ${PORT}`);
 });
