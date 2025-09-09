@@ -1,7 +1,7 @@
 {
   "name": "betterbox-api",
   "version": "1.0.0",
-  "description": "Permanent Image Hosting API using Render Persistent Disk",
+  "description": "Permanent Image Hosting API on Render Persistent Disk",
   "main": "api.js",
   "scripts": {
     "start": "node api.js"

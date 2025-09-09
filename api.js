@@ -8,8 +8,20 @@ const cors = require('cors');
 
 const PORT = process.env.PORT || 3000;
 
-// Persistent disk path on Render
-const UPLOAD_DIR = path.join('/data', 'images');
+// Persistent disk path
+const PERSISTENT_PATH = '/data';
+const UPLOAD_DIR = path.join(PERSISTENT_PATH, 'images');
+
+// Ensure persistent disk exists
+if (!fs.existsSync(PERSISTENT_PATH)) {
+  console.error('❌ Persistent disk not found at /data. Attach a disk in render.yaml!');
+  process.exit(1);
+}
+
+// Ensure images folder exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 // Allowed image types
 const ALLOWED_IMAGE_TYPES = [
@@ -22,11 +34,6 @@ const ALLOWED_IMAGE_TYPES = [
   'image/tiff',
   'image/avif'
 ];
-
-// Ensure upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
 
 // Multer config
 const storage = multer.diskStorage({
@@ -107,6 +114,24 @@ app.get('/preview/:filename', (req, res) => {
     </body>
     </html>
   `);
+});
+
+// List all uploaded images
+app.get('/list', (req, res) => {
+  try {
+    const files = fs.readdirSync(UPLOAD_DIR);
+    const images = files.map(filename => ({
+      filename,
+      url: `${req.protocol}://${req.get('host')}/i/${filename}`
+    }));
+    // Sort newest first
+    images.sort((a, b) => fs.statSync(path.join(UPLOAD_DIR, b.filename)).mtimeMs - fs.statSync(path.join(UPLOAD_DIR, a.filename)).mtimeMs);
+    
+    res.json({ success: true, count: images.length, images });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Start server
